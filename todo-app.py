@@ -109,7 +109,10 @@ def main():
             break
         else:
             print("geçersiz seçim. lütfen 1 ile 5 arasında bir sayı girin.")
+
         input("devam etmek için enter'a basın...") # kullanıcının çıktıyı görmesi için
 
+#komutları editörde çalıştırmaya yarar#
 if __name__ == "__main__":
     main()
+
