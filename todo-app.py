@@ -68,6 +68,27 @@ def delete_tasks(task_id):
     else:
         print(f"ID {task_id} ile eşleşen görev bulunamadı.")
 
+def filter_tasks(status_filter):
+    """görevleri tamamlanma durumuna göre filtreler
+    (True: tamamlanmul görevler, False: tamamlanmamış görevler """
+#filtrelenmiş görevleri depolamak için boş bir liste oluşturur.
+    filtered = []
+    for task in tasks:
+        if task["completed"] == status_filter:
+            filtered.append(task)
+    if not filtered:
+        #eğer filtreye uyan görev yoksa kullanıcıya bilgi verir
+        print(f"Hiç {'tamamlanmış' if status_filter else 'tamamlanmamış' } görev yok.")
+        return
+
+    #filtrelenmiş görevleri liste başlığıyla birlikte gösterir
+    print(f"\n---{ 'Tamamlanmış' if status_filter else 'Tamamlanmamış' } Görev listeniz ---")
+    for task in filtered:
+        status = "[x]" if task["completed"] else "[ ]"
+        # öncelik bilgisi varsa onuda gösterir
+        priority = task.get("priority", "Belirtilmemiş")
+        print(f"{status} ID: {task['id']} - [{priority}] - {task['description']}")
+    print("----------------------------------------\n")
 def display_menu():
     """kullanıcıya menüyü gösterir."""
     print("yapılacaklar listesi uygulaması")
@@ -75,7 +96,9 @@ def display_menu():
     print("2. görevleri listele")
     print("3. görev tamamla")
     print("4. görev sil")
-    print("5. çıkış")
+    print("5. Görev Düzenle")
+    print("6. Görevleri Filtrele")
+    print("7. çıkış")
     print("--------------------------")
 
 def main():
@@ -84,7 +107,7 @@ def main():
 
     while True:
         display_menu()
-        choice = input("seçiminizi yapın (1-5): ")
+        choice = input("seçiminizi yapın (1-7): ")
 
         if choice == '1':
             description = input("eklemek istediğiniz görevi yazın: ")
@@ -103,14 +126,26 @@ def main():
                 delete_tasks(task_id)
             except ValueError:
                 print("Geçersiz ID. lütfen bir sayı girin. ")
-        elif choice == '5':
+
+        elif choice == '6' : # yeni: görev filtrele
+            print("\nFiltreleme Seçenekleri:")
+            print("1. Tamamlanmamış Görevler")
+            print("2. Tamamnlanmış Görevler")
+            filter_choice = input("Seçiminizi Yapın (1-2: ")
+            if filter_choice == '1':
+                filter_tasks(False) #tamamlanmamışları göster
+            elif filter_choice == '2':
+                filter_tasks(True)  #tamamlanmışları göster
+            else:
+                print("Geçersiz filtreleme seçimi.")
+        elif choice == '7':
             save_tasks() # uygulama kapanırken görevleri kaydet
             print("Uygulamadan çıkılıyor. hoşka kalın!")
             break
         else:
-            print("geçersiz seçim. lütfen 1 ile 5 arasında bir sayı girin.")
-
-        input("devam etmek için enter'a basın...") # kullanıcının çıktıyı görmesi için
+            print("geçersiz seçim. lütfen 1 ile 7 arasında bir sayı girin.")
+        if choice != '7':
+            input("devam etmek için enter'a basın...") # kullanıcının çıktıyı görmesi için
 
 #komutları editörde çalıştırmaya yarar#
 if __name__ == "__main__":
