@@ -1,0 +1,16 @@
+version: '3.8' # Docker Compose dosya formatının versiyonu
+
+services: # Uygulamanızdaki tüm servisleri tanımlarız
+  web: # İlk servisimiz: web uygulaması
+    build: . # Bu servisin imajını mevcut dizindeki Dockerfile'dan inşa et
+    ports:
+      - "8000:5000" # Host makinenin 8000 portunu konteynerin 5000 portuna eşle
+    environment:
+      - REDIS_HOST=redis # Konteynere bir ortam değişkeni ekle: Redis servisi 'redis' adıyla erişilebilir
+    depends_on: # Bu servis başlamadan önce hangi servislerin başlaması gerektiğini belirtir
+      - redis
+
+  redis: # İkinci servisimiz: Redis veritabanı
+    image: "redis:alpine" # Docker Hub'dan direkt 'redis:alpine' imajını çek ve kullan
+    ports:
+      - "6379:6379" # Redis'in varsayılan portu 6379'u dışarıya aç (isteğe bağlı, sadece debug için)

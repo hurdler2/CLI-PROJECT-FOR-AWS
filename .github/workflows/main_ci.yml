@@ -1,0 +1,41 @@
+name: Python CI Pipeline # İş akışının adı
+
+on: # İş akışının ne zaman tetikleneceğini belirler
+  push:
+    branches: [ main ] # Sadece 'main' dalına yapılan push işlemlerinde çalışır
+  pull_request:
+    branches: [ main ] # 'main' dalına gelen Pull Request'lerde çalışır
+
+jobs: # Çalıştırılacak işlerin listesi
+  build-and-test: # Bir işin adı
+    runs-on: ubuntu-latest # Bu işin Ubuntu Linux'un en son sürümünde çalışacağını belirtir
+
+    steps: # Bu işin içinde çalıştırılacak adımlar
+    - name: Git Repository'yi Çek # Adım 1: GitHub'dan kodu çeker
+      uses: actions/checkout@v4
+
+    - name: Python Ortamını Kur # Adım 2: Python ortamını ve versiyonunu ayarlar
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9' # Kullanılacak Python versiyonu
+
+    - name: Bağımlılıkları Kur # Adım 3: requirements.txt dosyasındaki bağımlılıkları kurar
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest # Testleri çalıştırmak için pytest de kurabiliriz (örneğin)
+
+    - name: Docker Compose Hizmetlerini Başlat (Test Ortamı İçin) # Adım 4: Docker Compose ile servisleri ayağa kaldırır
+      run: docker compose up -d
+
+    - name: Servislerin Başlamasını Bekle # Adım 5: Servislerin tam olarak başlaması için kısa bir bekleme (opsiyonel ama iyi bir pratik)
+      run: sleep 10
+
+    - name: Uygulama Testlerini Çalıştır # Adım 6: Testleri çalıştırır
+      run: python test_app.py # Oluşturduğumuz basit test dosyasını çalıştırır
+      env:
+        REDIS_HOST: localhost # Testler için Redis'in localhost'ta olduğunu varsayarız (Docker Compose ağında)
+
+    - name: Docker Compose Hizmetlerini Kapat # Adım 7: Testler bitince servisleri kapatır
+      if: always() # Hata olsa bile bu adımın çalışmasını sağlar
+      run: docker compose down
