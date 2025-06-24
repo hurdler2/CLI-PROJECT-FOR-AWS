@@ -1,41 +1,73 @@
-name: Python CI Pipeline # İş akışının adı
+name: CI/CD Pipeline - Dev Ortamı # İş akışının yeni adı
 
-on: # İş akışının ne zaman tetikleneceğini belirler
+on:
   push:
-    branches: [ main ] # Sadece 'main' dalına yapılan push işlemlerinde çalışır
-  pull_request:
-    branches: [ main ] # 'main' dalına gelen Pull Request'lerde çalışır
+    branches: [ main ] # Sadece 'main' dalına yapılan push'larda çalışır
+  # pull_request: # PR'ları yorum satırı yapabiliriz, sadece push ile ilgilenelim şimdilik
+  #   branches: [ main ]
 
-jobs: # Çalıştırılacak işlerin listesi
-  build-and-test: # Bir işin adı
-    runs-on: ubuntu-latest # Bu işin Ubuntu Linux'un en son sürümünde çalışacağını belirtir
-
-    steps: # Bu işin içinde çalıştırılacak adımlar
-    - name: Git Repository'yi Çek # Adım 1: GitHub'dan kodu çeker
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Git Repository'yi Çek
       uses: actions/checkout@v4
 
-    - name: Python Ortamını Kur # Adım 2: Python ortamını ve versiyonunu ayarlar
+    - name: Python Ortamını Kur
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9' # Kullanılacak Python versiyonu
+        python-version: '3.9'
 
-    - name: Bağımlılıkları Kur # Adım 3: requirements.txt dosyasındaki bağımlılıkları kurar
+    - name: Bağımlılıkları Kur
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest # Testleri çalıştırmak için pytest de kurabiliriz (örneğin)
+        pip install pytest
 
-    - name: Docker Compose Hizmetlerini Başlat (Test Ortamı İçin) # Adım 4: Docker Compose ile servisleri ayağa kaldırır
+    - name: Docker Compose Hizmetlerini Başlat (Test Ortamı İçin)
       run: docker compose up -d
 
-    - name: Servislerin Başlamasını Bekle # Adım 5: Servislerin tam olarak başlaması için kısa bir bekleme (opsiyonel ama iyi bir pratik)
+    - name: Servislerin Başlamasını Bekle
       run: sleep 10
 
-    - name: Uygulama Testlerini Çalıştır # Adım 6: Testleri çalıştırır
-      run: python test_app.py # Oluşturduğumuz basit test dosyasını çalıştırır
+    - name: Uygulama Testlerini Çalıştır
+      run: python test_app.py
       env:
-        REDIS_HOST: localhost # Testler için Redis'in localhost'ta olduğunu varsayarız (Docker Compose ağında)
+        REDIS_HOST: localhost
 
-    - name: Docker Compose Hizmetlerini Kapat # Adım 7: Testler bitince servisleri kapatır
-      if: always() # Hata olsa bile bu adımın çalışmasını sağlar
+    - name: Docker Compose Hizmetlerini Kapat (Test Sonrası)
+      if: always()
       run: docker compose down
+
+  deploy-to-dev: # Yeni bir dağıtım işi ekliyoruz
+    needs: build-and-test # Bu iş, 'build-and-test' işi başarılı olursa çalışır
+    runs-on: ubuntu-latest # Dağıtım için farklı bir runner kullanabiliriz
+
+    steps:
+    - name: Git Repository'yi Çek (Dağıtım İçin)
+      uses: actions/checkout@v4
+
+    - name: Docker İmajını Tekrar İnşa Et # Uygulamanın en yeni imajını inşa et
+      run: docker build -t my-web-app .
+
+    - name: Mevcut Konteyneri Durdur ve Kaldır (Dev Ortamı) # Eski konteyneri temizle
+      run: |
+        docker stop my-flask-app || true # Hata vermemesi için || true ekledik
+        docker rm my-flask-app || true
+
+    - name: Yeni Konteyneri Başlat (Dev Ortamı) # Yeni imajla uygulamayı başlat
+      run: |
+        docker run -d -p 8000:5000 --name my-flask-app \
+          -e REDIS_HOST=host.docker.internal \
+          my-web-app
+      # NOT: macOS'ta host makineye erişim için host.docker.internal kullanılır.
+      # Linux'ta ise host makinenin IP adresi gerekebilir veya bridge network ayarı yapılabilir.
+      # Basitlik için burada host.docker.internal kullanıyoruz, Docker Desktop ile iyi çalışır.
+      # Gerçek senaryolarda SSH ile uzak sunucuya bağlanıp orada bu komutlar çalıştırılır.
+
+    - name: Dağıtım Başarısını Doğrula
+      run: |
+        sleep 5 # Konteynerin başlaması için bekle
+        curl http://localhost:8000 # Uygulamanın çalışıp çalışmadığını kontrol et
+        # Buradaki curl komutu, GitHub Actions runner'ı içindeki 8000 portuna istek atar.
+        # Gerçekte, bir dağıtım sonrası uygulamanın canlı URL'sini test ederdik.
